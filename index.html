@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wizard of Anoma</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="anoma.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="firebase-score.js"></script>
+  <style>
+    #audio-controls-fab {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.13);
+      padding: 18px 22px 14px 22px;
+      display: flex;
+      gap: 26px;
+      align-items: center;
+      transition: box-shadow 0.15s;
+    }
+    #audio-controls-fab:hover {
+      box-shadow: 0 6px 32px rgba(255,53,53,0.20);
+    }
+    .audio-slider-block {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .audio-slider-block label {
+      font-size: 1.38em;
+      cursor: pointer;
+      user-select: none;
+      margin-right: 6px;
+    }
+    .audio-slider-block input[type="range"] {
+      accent-color: #ff3535;
+      width: 80px;
+      margin: 0 5px 0 0;
+    }
+    .music-toggle-btn {
+      font-size: 1.6em;
+      border: none;
+      background: none;
+      cursor: pointer;
+      margin-left: 7px;
+      transition: filter 0.18s;
+      filter: grayscale(0.3);
+    }
+    .music-toggle-btn.active {
+      filter: grayscale(0) drop-shadow(0 0 7px #ff353588);
+    }
+    .music-toggle-btn.muted {
+      filter: grayscale(0.9) brightness(0.7);
+      opacity: 0.6;
+    }
+    @media (max-width: 700px) {
+      #audio-controls-fab { right: 10px; bottom: 10px; padding: 13px 10px 8px 10px; }
+      .audio-slider-block input[type="range"] { width: 52px; }
+      .audio-slider-block label { font-size: 1.0em;}
+      .music-toggle-btn { font-size: 1.1em;}
+    }
+  </style>
+</head>
+<body>
+  <span id="highScoreDisplay"></span>
+  <div id="bg-image"></div>
+  <div id="top-bar" class="top-bar-visible">
+    <div class="top-bar-inner">
+      <h1 class="game-title">Wizard Of Anoma</h1>
+      <span class="beta-box">BETA</span>
+    </div>
+  </div>
+  <div id="lang-select-bar">
+    <span class="languages-label">Languages:</span>
+    <div class="lang-row">
+      <button class="lang-btn" data-lang="en"><img src="en.png" alt="English"></button>
+      <button class="lang-btn" data-lang="tr"><img src="tr.png" alt="Turkish"></button>
+      <button class="lang-btn" data-lang="ko"><img src="ko.png" alt="Korean"></button>
+      <button class="lang-btn" data-lang="vi"><img src="vi.png" alt="Vietnamese"></button>
+      <button class="lang-btn" data-lang="pl"><img src="pl.png" alt="Polish"></button>
+      <button class="lang-btn" data-lang="ru"><img src="ru.png" alt="Russian"></button>
+      <button class="lang-btn" data-lang="zh"><img src="zh.png" alt="Chinese"></button>
+    </div>
+  </div>
+
+  <!-- Modern floating audio controls (bottom right) -->
+  <div id="audio-controls-fab">
+    <div class="audio-slider-block" title="Effect Volume">
+      <label for="effectVolumeSlider">🔊</label>
+      <input type="range" id="effectVolumeSlider" min="0" max="1" step="0.01" value="1">
+    </div>
+    <div class="audio-slider-block" title="Music Volume">
+      <label for="musicVolumeSlider">🎵</label>
+      <input type="range" id="musicVolumeSlider" min="0" max="1" step="0.01" value="1">
+      <button id="musicToggleBtn" class="music-toggle-btn active" title="Toggle Music">
+        <span id="musicToggleIcon">✅</span>
+      </button>
+    </div>
+  </div>
+
+  <button id="pauseBtn" style="position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:200;background:rgba(255,255,255,0.93);border-radius:50%;border:none;width:54px;height:54px;box-shadow:0 1px 6px #ff353566;cursor:pointer;display:none;">
+    <span style="font-size:2.1em;">⏸️</span>
+  </button>
+
+  <!-- Oyun içi ORTADA PAUSE PANELİ -->
+  <div id="pausePanel" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:999;background:rgba(0,0,0,0.42);justify-content:center;align-items:center;">
+    <div style="background:#fff;border-radius:20px;box-shadow:0 0 30px #ff353566;padding:36px 32px;min-width:340px; text-align:center;">
+      <h2 style="color:#ff3535;font-weight:bold;margin-bottom:18px;">Game Paused</h2>
+      <div style="margin-bottom:18px;">
+        <div class="audio-slider-block" style="justify-content:center;">
+          <label for="effectVolumeSliderPause">🔊</label>
+          <input type="range" id="effectVolumeSliderPause" min="0" max="1" step="0.01" value="1">
+        </div>
+        <div class="audio-slider-block" style="margin-top:18px;justify-content:center;">
+          <label for="musicVolumeSliderPause">🎵</label>
+          <input type="range" id="musicVolumeSliderPause" min="0" max="1" step="0.01" value="1">
+          <button id="musicToggleBtnPause" class="music-toggle-btn active" title="Toggle Music">
+            <span id="musicToggleIconPause">✅</span>
+          </button>
+        </div>
+      </div>
+      <button id="resumeBtn" class="btn-main" style="margin-top:12px;font-size:1.2em;padding:10px 32px;border-radius:10px;background:#ff3535;color:#fff;border:none;cursor:pointer;font-weight:bold;box-shadow:0 2px 11px #ff35352d;">Continue</button>
+    </div>
+  </div>
+
+  <div id="start-screen" class="centered show-blur">
+    <div class="start-panel">
+      <div class="panel-title-row">
+        <img src="anoma.png" alt="Anoma Logo" class="anoma-logo">
+        <div class="panel-title-box">
+          <span class="panel-title-text" id="title-main">Wizard Of Anoma</span>
+          <span class="panel-beta-box" id="title-beta">BETA</span>
+        </div>
+      </div>
+      <div class="profile-photo-area">
+        <div id="profile-photo-container" style="display:none; flex-direction:column; align-items:center;">
+          <img id="profile-photo" src="default-profile.png" alt="Profile" />
+          <span id="profile-username" class="profile-username">@kullaniciadi</span>
+        </div>
+      </div>
+      <label for="username" class="username-label" id="username-label">Lütfen X kullanıcı adınızı giriniz</label>
+      <input id="username" type="text" placeholder="Kullanıcı Adı" autocomplete="off" maxlength="18">
+      <button id="start-button" class="btn-main">Oyna</button>
+      <div class="btn-group">
+        <button id="howtoBtn" class="btn-secondary">Nasıl Oynanır?</button>
+        <button id="howtoVideoBtnMain" class="video-btn" type="button">
+          <span style="font-size:1.3em; margin-right:5px;">🎬</span>
+          <span id="videoBtnTextMain">Oynanış Videosu</span>
+        </button>
+      </div>
+      <a href="https://x.com/oinomaoseth" target="_blank" class="oi-credit">Made by Oi</a>
+    </div>
+  </div>
+  <div id="username-modal" class="modal" style="display:none;">
+    <div class="modal-content username-modal-content">
+      <span id="username-modal-text">Lütfen X kullanıcı adını giriniz</span>
+      <button id="closeUsernameModal" class="close-modal">Kapat</button>
+    </div>
+  </div>
+  <div id="howtoModal" class="modal">
+    <div class="modal-content" style="position:relative;">
+      <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+        <h2 id="howto-title" style="margin-bottom:0;">Nasıl Oynanır?</h2>
+        <button id="videoBtn" class="video-btn" title="Oynanış Videosu"><span style="font-size:1.3em; margin-right:5px;">🎬</span><span id="videoBtnText">Oynanış Videosu</span></button>
+      </div>
+      <div id="howto-desc"></div>
+      <ul id="howto-list" style="width:100%;">
+        <li id="howto-jump"></li>
+        <li id="howto-shoot"></li>
+        <li id="howto-tip1"></li>
+        <li id="howto-tip2"></li>
+        <li id="howto-tip3"></li>
+        <li id="howto-tip4"></li>
+        <li id="howto-tip5"></li>
+        <li id="howto-tip6"></li>
+        <li id="howto-tip7"></li>
+      </ul>
+      <a href="https://x.com/oinomaoseth" target="_blank" class="oi-credit howto-credit">Created by Oi</a>
+      <button id="closeHowTo" class="close-modal" style="margin-top:10px;">Kapat</button>
+    </div>
+  </div>
+  <div id="videoModal" class="modal">
+    <div class="video-modal-content">
+      <video id="howtoVideo" src="howtoplay.mp4" controls style="max-width:100%;border-radius:8px;background:#000;"></video>
+      <button id="closeVideoModal" class="close-modal" style="margin-top:12px;">Kapat</button>
+    </div>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="leaderboardArea" style="
+    position:fixed;
+    top:120px; left:24px;
+    z-index:30;
+    background:#fff;
+    border-radius:12px;
+    box-shadow:0 2px 10px rgba(255,53,53,0.09);
+    border:2px solid #ff3535;
+    padding:10px 18px;
+    font-size:1.1rem;
+    font-weight:bold;
+    color:#ff3535;
+    min-width:170px;
+    display:none;
+  "></div>
+  <div id="game-over-screen" class="centered show-blur">
+    <div class="game-over-panel">
+      <div class="panel-title-row">
+        <img src="anoma.png" alt="Anoma Logo" class="anoma-logo">
+        <div class="panel-title-box">
+          <span class="panel-title-text" id="title-main-over">Wizard Of Anoma</span>
+          <span class="panel-beta-box" id="title-beta-over">BETA</span>
+        </div>
+      </div>
+      <img id="game-over-photo" src="default-profile.png" alt="Profile" />
+      <div id="game-over-username"></div>
+      <div id="finalScore"></div>
+      <div id="congratsText"></div>
+      <button id="shareXButton" class="btn-main-x">X'te Paylaş</button>
+      <button id="restartButton" class="btn-main">Tekrar Oyna</button>
+      <a href="https://x.com/oinomaoseth" target="_blank" class="oi-credit">Created by Oi</a>
+    </div>
+  </div>
+  <script src="script.js"></script>
+  <script>
+    // Aşağıdaki kodu script.js'nin en altına da ekleyebilirsin!
+    document.addEventListener("DOMContentLoaded", function() {
+      const audioFab = document.getElementById("audio-controls-fab");
+      const startScreen = document.getElementById("start-screen");
+      const startBtn = document.getElementById("start-button");
+      const gameOverScreen = document.getElementById("game-over-screen");
+      const restartBtn = document.getElementById("restartButton");
+
+      function showAudioFab() {
+        audioFab.style.display = "flex";
+      }
+      function hideAudioFab() {
+        audioFab.style.display = "none";
+      }
+
+      // Sayfa yüklendiğinde başlat
+      if (startScreen && startScreen.style.display !== "none") {
+        showAudioFab();
+      }
+
+      // Oyun başlayınca gizle
+      if (startBtn) {
+        startBtn.addEventListener("click", function() {
+          hideAudioFab();
+        });
+      }
+
+      // Oyun bitti, ana ekrana dönünce tekrar göster
+      // game-over-screen tekrar başlatınca ana ekrana dönüyorsa:
+      if (restartBtn) {
+        restartBtn.addEventListener("click", function() {
+          // restart işlemi bitince ana ekran açılıyorsa:
+          setTimeout(() => {
+            if (startScreen && startScreen.style.display !== "none") {
+              showAudioFab();
+            }
+          }, 500); // animasyon/işlem için ufak gecikme
+        });
+      }
+      // Eğer başka bir şekilde ana ekrana dönülüyorsa, oralarda da showAudioFab() çağır.
+    });
+  </script>
+</body>
+</html>
