@@ -20,8 +20,8 @@ const gameOverScreen = document.getElementById("game-over-screen");
 const finalScoreText = document.getElementById("finalScore");
 const restartButton = document.getElementById("restartButton");
 const shareXButton = document.getElementById("shareXButton");
-const jumpSound = new Audio("jump.mp3");
-const spellSound = new Audio("spell.mp3");
+window.jumpSound = new Audio("jump.mp3");
+window.spellSound = new Audio("spell.mp3");
 const profilePhotoContainer = document.getElementById("profile-photo-container");
 const profilePhoto = document.getElementById("profile-photo");
 
@@ -38,7 +38,55 @@ const usernameModalText = document.getElementById("username-modal-text");
 
 const langBar = document.getElementById("lang-select-bar");
 const langBtns = document.querySelectorAll(".lang-btn");
+// Elementleri seç
+const feedbackBtn = document.getElementById("feedbackBtn");
+const feedbackModal = document.getElementById("feedbackModal");
+const sendFeedbackBtn = document.getElementById("sendFeedbackBtn");
+const feedbackInput = document.getElementById("feedbackInput");
+const closeFeedbackModal = document.getElementById("closeFeedbackModal");
 
+// Feedback butonuna tıklayınca modalı aç
+feedbackBtn && feedbackBtn.addEventListener("click", () => {
+  feedbackModal.style.display = "flex";
+});
+
+// Modalı kapat
+closeFeedbackModal && closeFeedbackModal.addEventListener("click", () => {
+  feedbackModal.style.display = "none";
+});
+
+// Modal dışında tıklayınca da kapansın
+feedbackModal && feedbackModal.addEventListener("click", function(e) {
+  if (e.target === feedbackModal) {
+    feedbackModal.style.display = "none";
+  }
+});
+sendFeedbackBtn && sendFeedbackBtn.addEventListener("click", () => {
+  const feedbackText = feedbackInput.value.trim();
+  if (!feedbackText) {
+    alert("Lütfen bir mesaj yazın.");
+    return;
+  }
+  // İstersen kullanıcı adı da gönderebilirsin
+  const username = currentUsername || "Anonim";
+  const feedbackData = {
+    username,
+    feedback: feedbackText,
+    date: new Date().toISOString(),
+    score: score || 0
+  };
+  // Firebase Realtime Database'e yaz
+  const ref = window.db ? window.db.ref('feedbacks') : firebase.database().ref('feedbacks');
+  ref.push(feedbackData, function(error) {
+    if (error) {
+      alert("Gönderilemedi: " + error.message);
+    } else {
+      alert("Teşekkürler! Geri bildiriminiz alındı.");
+      feedbackInput.value = "";
+      feedbackModal.style.display = "none";
+    }
+  });
+});
 const LANGS = {
   tr: {
     title: "Wizard Of Anoma",
@@ -57,8 +105,8 @@ const LANGS = {
     score: "Puan",
     leaderboard: "🏅 En İyi 5 Skor",
     time: "Süre",
-    highscore: "High Score",
-    yourscore: "Your Score",
+    highscore: "En Yüksek Puan",
+    yourscore: "Senin Puanın",
     newhigh: "🎉 Tebrikler! Yeni rekorunu kırdın!",
     close: "Kapat",
     sharex: "X'te Paylaş"
@@ -104,9 +152,9 @@ const LANGS = {
     leaderboard: "🏅 상위 5점",
     time: "시간",
     highscore: "최고 점수",
-    yourscore: "Your Score",
+    yourscore: "당신의 점수",
     newhigh: "🎉 축하합니다! 최고 점수 달성!",
-    close: "Kapat",
+    close: "닫다",
     sharex: "X에 공유"
   },
   vi: {
@@ -127,9 +175,9 @@ const LANGS = {
     leaderboard: "🏅 Top 5 điểm",
     time: "Thời gian",
     highscore: "Điểm cao",
-    yourscore: "Your Score",
+    yourscore: "Điểm của bạn",
     newhigh: "🎉 Chúc mừng! Bạn đã đạt kỷ lục mới!",
-    close: "Kapat",
+    close: "đóng",
     sharex: "Chia sẻ trên X"
   },
   pl: {
@@ -150,9 +198,9 @@ const LANGS = {
     leaderboard: "🏅 Top 5 wyników",
     time: "Czas",
     highscore: "Najlepszy wynik",
-    yourscore: "Your Score",
+    yourscore: "Twoje Wyniki",
     newhigh: "🎉 Gratulacje! Nowy rekord!",
-    close: "Kapat",
+    close: "닫다",
     sharex: "Udostępnij na X"
   },
   ru: {
@@ -173,9 +221,9 @@ const LANGS = {
     leaderboard: "🏅 Топ 5",
     time: "Время",
     highscore: "Рекорд",
-    yourscore: "Your Score",
+    yourscore: "Ваш счёт",
     newhigh: "🎉 Поздравляем! Новый рекорд!",
-    close: "Kapat",
+    close: "Закрыть",
     sharex: "Поделиться на X"
   },
   zh: {
@@ -196,13 +244,44 @@ const LANGS = {
     leaderboard: "🏅 前5名",
     time: "时间",
     highscore: "最高分",
-    yourscore: "Your Score",
+    yourscore: "您的得分",
     newhigh: "🎉 恭喜！新纪录！",
-    close: "Kapat",
+    close: "닫다",
     sharex: "分享到 X"
   }
 };
-
+function showStartScreen() {
+  document.getElementById("start-screen").style.display = "flex";
+  document.getElementById("side-leaderboard").style.display = "flex";
+  // (Varsa başka başlatma kodların buraya!)
+  document.addEventListener("DOMContentLoaded", showAudioFab);
+}
+document.getElementById("effectVolumeSlider").addEventListener("input", function(e) {
+  const value = Number(e.target.value);
+  // jump.mp3 ve spell.mp3 sesini değiştir
+  if (window.jumpSound) window.jumpSound.volume = value;
+  if (window.spellSound) window.spellSound.volume = value;
+  // Eğer oyun sırasında birden fazla Audio objesi üretiyorsan, hepsine uygula!
+});
+function showAudioFab() {
+  document.getElementById("audio-controls-fab").style.display = "flex";
+}
+function hideAudioFab() {
+  document.getElementById("audio-controls-fab").style.display = "none";
+}
+document.addEventListener("DOMContentLoaded", function() {
+  document.getElementById("side-leaderboard").style.display = "flex";
+});
+document.getElementById("start-button").addEventListener("click", function() {
+  hideAudioFab();
+  // Oyun başlatan kodlarını da burada çağır
+});
+document.getElementById("restartButton").addEventListener("click", function() {
+  showAudioFab();
+  // Başlangıç ekranına dönme kodların
+});
+// Örneğin tekrar oyna butonunda:
+document.getElementById("restartButton").addEventListener("click", showStartScreen);
 let currentLang = "en";
 window.addEventListener("DOMContentLoaded", function() {
   setLanguage(currentLang);
@@ -226,6 +305,13 @@ function setLanguage(lang) {
   document.getElementById("howto-jump").innerHTML = LANGS[lang].howto_jump;
   document.getElementById("howto-shoot").innerHTML = LANGS[lang].howto_shoot;
   document.querySelector(".howto-credit").textContent = LANGS[lang].oi;
+  document.getElementById("start-button").addEventListener("click", function() {
+  // Başlangıç ekranını gizle
+  document.getElementById("start-screen").style.display = "none";
+  // Sıralama panelini gizle
+  document.getElementById("side-leaderboard").style.display = "none";
+  // (Oyununu başlatan diğer kodlar buraya!)
+});
   langBtns.forEach(btn => btn.classList.remove("active"));
   document.querySelector(`.lang-btn[data-lang="${lang}"]`).classList.add("active");
   // Kapat butonlarını güncelle
@@ -1393,3 +1479,62 @@ restartButton.addEventListener("click", () => {
   pausePanel.style.display = "none";
 });
 // ...oyunun kalan script.js kodları aynı şekilde devam edecek...
+// FEEDBACK POPUP AÇMA/KAPAMA VE FIREBASE'E GÖNDERME
+
+// Elementleri seç
+const feedbackFab = document.getElementById("feedback-fab");
+const feedbackPopup = document.getElementById("feedback-popup");
+const feedbackSendBtn = document.getElementById("feedback-send");
+const feedbackTextarea = document.getElementById("feedback-text");
+const feedbackUsernameInput = document.getElementById("feedback-username");
+
+if (feedbackFab) {
+  feedbackFab.addEventListener("click", function() {
+    if (feedbackPopup.style.display === "flex" || feedbackPopup.style.display === "block") {
+      feedbackPopup.style.display = "none";
+    } else {
+      feedbackPopup.style.display = "flex";
+      feedbackUsernameInput && feedbackUsernameInput.focus();
+    }
+  });
+}
+
+// Dışarı tıklayınca kapansın
+document.addEventListener("mousedown", function(e) {
+  if (
+    feedbackPopup.style.display !== "none" &&
+    !feedbackPopup.contains(e.target) &&
+    !feedbackFab.contains(e.target)
+  ) {
+    feedbackPopup.style.display = "none";
+  }
+});
+
+if (feedbackSendBtn) {
+  feedbackSendBtn.addEventListener("click", function() {
+    const text = feedbackTextarea.value.trim();
+    const username = feedbackUsernameInput?.value.trim() || "Anonim";
+    if (!text) {
+      alert("Please write some feedback.");
+      return;
+    }
+    const score = (window.score || 0);
+    const data = {
+      text,
+      username,
+      score,
+      date: new Date().toISOString()
+    };
+    const ref = window.db ? window.db.ref('feedbacks') : firebase.database().ref('feedbacks');
+    ref.push(data, function(error) {
+      if (error) {
+        alert("Feedback gönderilemedi: " + error.message);
+      } else {
+        alert("Teşekkürler! Geri bildiriminiz alındı.");
+        feedbackTextarea.value = "";
+        if(feedbackUsernameInput) feedbackUsernameInput.value = "";
+        feedbackPopup.style.display = "none";
+      }
+    });
+  });
+}

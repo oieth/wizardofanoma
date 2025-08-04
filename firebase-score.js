@@ -66,3 +66,49 @@ function showTop5ToElement(elementId) {
       ).join("");
   });
 }
+// Feedback gönderimi için Firebase fonksiyonu
+function sendFeedbackToFirebase(feedbackText) {
+  const feedbackRef = window.db ? window.db.ref('feedback') : firebase.database().ref('feedback');
+  const timestamp = Date.now();
+  // Dilersen kullanıcı adını da ekleyebilirsin:
+  let username = document.getElementById('username')?.value || "Anon";
+  feedbackRef.push({
+    text: feedbackText,
+    username: username,
+    time: timestamp
+  });
+}
+
+// Feedback popup aç/kapat
+document.getElementById('feedback-fab').addEventListener('click', function() {
+  document.getElementById('feedback-popup').style.display = 'block';
+  document.getElementById('feedback-text').focus();
+});
+document.getElementById('feedback-send').addEventListener('click', function() {
+  const textarea = document.getElementById('feedback-text');
+  const feedback = textarea.value.trim();
+  if (!feedback) {
+    textarea.style.border = '2px solid #ff3535';
+    textarea.placeholder = 'Lütfen bir şey yazın!';
+    setTimeout(()=>{textarea.style.border=''; textarea.placeholder='Geri bildiriminiz...'}, 1300);
+    return;
+  }
+  sendFeedbackToFirebase(feedback);
+  textarea.value = '';
+  document.getElementById('feedback-popup').style.display = 'none';
+  // Kullanıcıya bildirim göster
+  const fab = document.getElementById('feedback-fab');
+  fab.classList.add('sent');
+  fab.querySelector('#feedback-label').textContent = 'Teşekkürler!';
+  setTimeout(()=>{
+    fab.classList.remove('sent');
+    fab.querySelector('#feedback-label').textContent = 'Feedback';
+  }, 2000);
+});
+
+// Popup dışında tıklanınca kapansın
+window.addEventListener('click', function(e) {
+  if (e.target === document.getElementById('feedback-popup')) {
+    document.getElementById('feedback-popup').style.display = 'none';
+  }
+});

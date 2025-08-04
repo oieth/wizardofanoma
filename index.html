@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <input type="range" id="effectVolumeSlider" min="0" max="1" step="0.01" value="0.5">
+<input type="range" id="musicVolumeSlider" min="0" max="1" step="0.01" value="0.5">
   <meta charset="UTF-8">
   <title>Wizard of Anoma</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +12,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="firebase-score.js"></script>
   <style>
+    
     #audio-controls-fab {
       position: fixed;
       bottom: 32px;
@@ -59,15 +62,248 @@
       filter: grayscale(0.9) brightness(0.7);
       opacity: 0.6;
     }
+    .user-score-box {
+      margin: 18px 0 6px 0;
+      padding: 14px 22px 14px 22px;
+      background: rgba(255,53,53,0.09);
+      border-radius: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 2px 12px #ff353522;
+      font-family: 'Montserrat', Arial, sans-serif;
+      min-width: 170px;
+      max-width: 260px;
+      transition: box-shadow 0.15s;
+    }
+    .user-score-label {
+      font-size: 1.09em;
+      color: #222;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .user-score-value {
+      font-size: 1.85em;
+      font-weight: bold;
+      color: #ff3535;
+      margin-bottom: 2px;
+    }
+    .user-rank-row {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .user-rank-icon {
+      font-size: 1.32em;
+      vertical-align: middle;
+      margin-right: 2px;
+    }
+    .user-rank-label {
+      font-size: 1.09em;
+      color: #666;
+      font-weight: 500;
+    }
+    .user-rank-gold { color: #FFD700; font-weight: bold; }
+    .user-rank-silver { color: #C0C0C0; font-weight: bold; }
+    .user-rank-bronze { color: #CD7F32; font-weight: bold; }
+    .user-rank-regular { color: #ff3535; font-weight: bold;}
+    @media (max-width: 600px) {
+      .user-score-box { min-width: 0; padding: 10px 6px; }
+    }
+    /* Modern Side Leaderboard Styles - Fontlar eski stillerden */
+    .leaderboard-panel {
+      position: absolute;
+      left: 36px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 320px;
+      background: rgba(255,255,255,0.97);
+      border-radius: 18px;
+      box-shadow: 0 8px 36px rgba(0,0,0,0.13);
+      padding: 28px 26px 22px 26px;
+      z-index: 101;
+      min-height: 440px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      transition: opacity 0.3s;
+      font-family: 'Montserrat', Arial, sans-serif;
+    }
+    .leaderboard-title {
+      font-size: 1.45em;
+      font-weight: bold;
+      color: #ff3535;
+      margin-bottom: 18px;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: 'Montserrat', Arial, sans-serif;
+    }
+    .leaderboard-list-outer {
+      width: 100%;
+      padding: 0;
+      margin: 0;
+    }
+    /* Scrollable Area */
+    .leaderboard-list-scroll {
+      max-height: 405px;
+      overflow-y: auto;
+      width: 100%;
+      padding: 0;
+      margin: 0;
+      scrollbar-color: #ffd6d6 #f3f3f3;
+      scrollbar-width: thin;
+    }
+    .leaderboard-list-scroll::-webkit-scrollbar {
+      width: 7px;
+      border-radius: 7px;
+      background: #f3f3f3;
+    }
+    .leaderboard-list-scroll::-webkit-scrollbar-thumb {
+      background: #ffd6d6;
+      border-radius: 7px;
+    }
+    #leaderboard-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      width: 100%;
+    }
+    #leaderboard-list li {
+      display: flex;
+      align-items: center;
+      padding: 9px 0 9px 0;
+      border-bottom: 1px solid #f3f3f3;
+      font-size: 1.13em;
+      gap: 12px;
+      transition: background 0.16s;
+      font-family: 'Montserrat', Arial, sans-serif;
+    }
+    #leaderboard-list li:last-child {
+      border-bottom: none;
+    }
+    .leaderboard-medal {
+      width: 28px;
+      height: 28px;
+      display: inline-block;
+      margin-right: 3px;
+    }
+    .leaderboard-rank {
+      min-width: 28px;
+      text-align: right;
+      font-weight: 500;
+      color: #c2c2c2;
+      font-size: 1.08em;
+      font-family: 'Montserrat', Arial, sans-serif;
+    }
+    .leaderboard-username {
+      font-weight: 500;
+      color: #222;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: 'Montserrat', Arial, sans-serif;
+    }
+    .leaderboard-score {
+      font-weight: bold;
+      color: #ff3535;
+      min-width: 54px;
+      text-align: right;
+      font-family: 'Montserrat', Arial, sans-serif;
+    }
+    /* Modern search bar for leaderboard */
+    .leaderboard-search-bar {
+      margin-top: 10px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .leaderboard-search-bar input {
+      flex: 1;
+      padding: 8px 14px;
+      border: 1.5px solid #ff3535;
+      border-radius: 9px;
+      font-size: 1.05em;
+      font-family: 'Montserrat', Arial, sans-serif;
+      outline: none;
+      transition: border 0.13s;
+      background: #fff;
+    }
+    .leaderboard-search-bar input:focus {
+      border-color: #ff3535;
+      box-shadow: 0 2px 8px #ff353528;
+    }
+    .leaderboard-search-bar button {
+      background: #ff3535;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.05em;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-weight: bold;
+      transition: background 0.12s;
+    }
+    .leaderboard-search-bar button:hover {
+      background: #e02e2e;
+    }
+    .leaderboard-search-result {
+      margin-top: 7px;
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: #fff7f7;
+      font-size: 1.09em;
+      color: #222;
+      box-shadow: 0 2px 10px #ff35350c;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .search-rank-label {
+      font-weight: bold;
+      color: #ff3535;
+    }
+    .search-medal-gold {color: #FFD700;}
+    .search-medal-silver {color: #C0C0C0;}
+    .search-medal-bronze {color: #CD7F32;}
+    @media (max-width: 800px) {
+      .leaderboard-panel {
+        position: static;
+        width: 98%;
+        min-width: 0;
+        margin: 0 auto 20px auto;
+        transform: none;
+        top: unset;
+        left: unset;
+      }
+    }
     @media (max-width: 700px) {
       #audio-controls-fab { right: 10px; bottom: 10px; padding: 13px 10px 8px 10px; }
       .audio-slider-block input[type="range"] { width: 52px; }
       .audio-slider-block label { font-size: 1.0em;}
       .music-toggle-btn { font-size: 1.1em;}
+      .leaderboard-panel { min-height: 0; }
+      .leaderboard-list-scroll { max-height: 180px; }
     }
   </style>
 </head>
 <body>
+  <div id="feedback-popup">
+  <input id="feedback-username" type="text" maxlength="18" placeholder="Your X username (optional)" style="margin-bottom:8px;">
+  <textarea id="feedback-text" maxlength="500" placeholder="Your feedback..."></textarea>
+  <button id="feedback-send">Send</button>
+</div>
+  <div id="feedback-fab">
+  <span id="feedback-emoji" title="Geri Bildirim">💬</span>
+  <span id="feedback-label">Feedback</span>
+</div>
   <span id="highScoreDisplay"></span>
   <div id="bg-image"></div>
   <div id="top-bar" class="top-bar-visible">
@@ -88,7 +324,6 @@
       <button class="lang-btn" data-lang="zh"><img src="zh.png" alt="Chinese"></button>
     </div>
   </div>
-
   <!-- Modern floating audio controls (bottom right) -->
   <div id="audio-controls-fab">
     <div class="audio-slider-block" title="Effect Volume">
@@ -103,11 +338,23 @@
       </button>
     </div>
   </div>
-
+  <!-- MODERN SIDE LEADERBOARD -->
+  <div id="side-leaderboard" class="leaderboard-panel">
+    <div class="leaderboard-title">🏆 Leaderboard</div>
+    <div class="leaderboard-list-outer">
+      <div class="leaderboard-list-scroll" id="leaderboard-list-scroll">
+        <ol id="leaderboard-list"></ol>
+      </div>
+      <form class="leaderboard-search-bar" id="leaderboard-search-form" autocomplete="off" onsubmit="return false;">
+        <input type="text" id="leaderboard-search-input" placeholder="Search username..." maxlength="18">
+        <button type="submit">Search</button>
+      </form>
+      <div class="leaderboard-search-result" id="leaderboard-search-result"></div>
+    </div>
+  </div>
   <button id="pauseBtn" style="position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:200;background:rgba(255,255,255,0.93);border-radius:50%;border:none;width:54px;height:54px;box-shadow:0 1px 6px #ff353566;cursor:pointer;display:none;">
     <span style="font-size:2.1em;">⏸️</span>
   </button>
-
   <!-- Oyun içi ORTADA PAUSE PANELİ -->
   <div id="pausePanel" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:999;background:rgba(0,0,0,0.42);justify-content:center;align-items:center;">
     <div style="background:#fff;border-radius:20px;box-shadow:0 0 30px #ff353566;padding:36px 32px;min-width:340px; text-align:center;">
@@ -128,7 +375,6 @@
       <button id="resumeBtn" class="btn-main" style="margin-top:12px;font-size:1.2em;padding:10px 32px;border-radius:10px;background:#ff3535;color:#fff;border:none;cursor:pointer;font-weight:bold;box-shadow:0 2px 11px #ff35352d;">Continue</button>
     </div>
   </div>
-
   <div id="start-screen" class="centered show-blur">
     <div class="start-panel">
       <div class="panel-title-row">
@@ -142,6 +388,14 @@
         <div id="profile-photo-container" style="display:none; flex-direction:column; align-items:center;">
           <img id="profile-photo" src="default-profile.png" alt="Profile" />
           <span id="profile-username" class="profile-username">@kullaniciadi</span>
+        </div>
+        <div id="user-score-box" class="user-score-box" style="display:none;">
+          <div class="user-score-label">Your High Score</div>
+          <div class="user-score-value" id="user-highscore">-</div>
+          <div class="user-rank-row" id="user-rank-row" style="display:none;">
+            <span class="user-rank-icon" id="user-rank-icon"></span>
+            <span class="user-rank-label" id="user-rank-label"></span>
+          </div>
         </div>
       </div>
       <label for="username" class="username-label" id="username-label">Lütfen X kullanıcı adınızı giriniz</label>
@@ -182,13 +436,13 @@
         <li id="howto-tip7"></li>
       </ul>
       <a href="https://x.com/oinomaoseth" target="_blank" class="oi-credit howto-credit">Created by Oi</a>
-      <button id="closeHowTo" class="close-modal" style="margin-top:10px;">Kapat</button>
+      <button id="closeHowTo" class="close-modal" style="margin-top:10px;">Close</button>
     </div>
   </div>
   <div id="videoModal" class="modal">
     <div class="video-modal-content">
       <video id="howtoVideo" src="howtoplay.mp4" controls style="max-width:100%;border-radius:8px;background:#000;"></video>
-      <button id="closeVideoModal" class="close-modal" style="margin-top:12px;">Kapat</button>
+      <button id="closeVideoModal" class="close-modal" style="margin-top:12px;">Close</button>
     </div>
   </div>
   <canvas id="gameCanvas"></canvas>
@@ -227,46 +481,215 @@
   </div>
   <script src="script.js"></script>
   <script>
-    // Aşağıdaki kodu script.js'nin en altına da ekleyebilirsin!
+    // X profil fotoğrafı getirme
+    function fetchProfilePhoto(username) {
+      if (!username) {
+        document.getElementById('profile-photo').src = "default-profile.png";
+        return;
+      }
+      document.getElementById('profile-photo').src = `https://unavatar.io/x/${username}`;
+    }
+    function showProfileInfo(username) {
+      const container = document.getElementById('profile-photo-container');
+      const photo = document.getElementById('profile-photo');
+      const nameSpan = document.getElementById('profile-username');
+      if (username) {
+        container.style.display = "flex";
+        fetchProfilePhoto(username);
+        nameSpan.textContent = "@" + username;
+      } else {
+        container.style.display = "none";
+      }
+    }
+
+    // Madalya SVG'leri
+    const medals = [
+      `<span class="leaderboard-medal" title="Gold">
+        <svg width="28" height="28" viewBox="0 0 28 28">
+          <circle cx="14" cy="14" r="13" fill="#FFD700" stroke="#E5B700" stroke-width="2"/>
+          <text x="14" y="19" text-anchor="middle" font-size="16" fill="#fff" font-family="Arial" font-weight="bold">1</text>
+        </svg>
+      </span>`,
+      `<span class="leaderboard-medal" title="Silver">
+        <svg width="28" height="28" viewBox="0 0 28 28">
+          <circle cx="14" cy="14" r="13" fill="#C0C0C0" stroke="#A6A6A6" stroke-width="2"/>
+          <text x="14" y="19" text-anchor="middle" font-size="16" fill="#fff" font-family="Arial" font-weight="bold">2</text>
+        </svg>
+      </span>`,
+      `<span class="leaderboard-medal" title="Bronze">
+        <svg width="28" height="28" viewBox="0 0 28 28">
+          <circle cx="14" cy="14" r="13" fill="#CD7F32" stroke="#A66B2E" stroke-width="2"/>
+          <text x="14" y="19" text-anchor="middle" font-size="16" fill="#fff" font-family="Arial" font-weight="bold">3</text>
+        </svg>
+      </span>`
+    ];
+    function escapeHtml(str) {
+      return (str || "").replace(/[&<>"']/g, function(m) {
+        return ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        })[m];
+      });
+    }
+
+    let globalLeaderboardItems = [];
+    function showSideLeaderboard() {
+      const ref = window.db ? window.db.ref('scores') : firebase.database().ref('scores');
+      const leaderboardList = document.getElementById('leaderboard-list');
+      leaderboardList.innerHTML = `<li style="color:#999;justify-content:center;">Loading...</li>`;
+      ref.orderByChild('score').once('value', function(snapshot) {
+        const items = [];
+        snapshot.forEach(function(child) {
+          items.push(child.val());
+        });
+        items.sort((a, b) => b.score - a.score);
+        globalLeaderboardItems = items;
+        let html = "";
+        if (items.length === 0) {
+          html = `<li style="color:#aaa;justify-content:center;">No scores yet.</li>`;
+        } else {
+          items.forEach((item, i) => {
+            let medal = "";
+            if (i < 3) medal = medals[i];
+            html += `<li>
+              <span class="leaderboard-rank">${medal || (i+1) + "."}</span>
+              <span class="leaderboard-username">${escapeHtml(item.username) || "Anon"}</span>
+              <span class="leaderboard-score">${item.score}</span>
+            </li>`;
+          });
+        }
+        leaderboardList.innerHTML = html;
+      });
+    }
+
+    function searchLeaderboard(username) {
+      username = (username || "").trim().toLowerCase();
+      const resultDiv = document.getElementById("leaderboard-search-result");
+      if (!username) {
+        resultDiv.style.display = "none";
+        return;
+      }
+      let foundIndex = -1;
+      let foundScore = 0;
+      for (let i = 0; i < globalLeaderboardItems.length; ++i) {
+        if ((globalLeaderboardItems[i].username || "").toLowerCase() === username) {
+          foundIndex = i;
+          foundScore = globalLeaderboardItems[i].score;
+          break;
+        }
+      }
+      if (foundIndex === -1) {
+        resultDiv.innerHTML = `<span>No such username found in leaderboard.</span>`;
+        resultDiv.style.display = "flex";
+        return;
+      }
+      let medal = "";
+      let medalClass = "";
+      if (foundIndex === 0) { medal = "🥇"; medalClass = "search-medal-gold"; }
+      else if (foundIndex === 1) { medal = "🥈"; medalClass = "search-medal-silver"; }
+      else if (foundIndex === 2) { medal = "🥉"; medalClass = "search-medal-bronze"; }
+      resultDiv.innerHTML =
+        `<span class="search-rank-label ${medalClass}">${medal || "#"+(foundIndex+1)}</span>
+        <span style="font-weight:500;">${escapeHtml(globalLeaderboardItems[foundIndex].username)}</span>
+        <span style="color:#666;">Score:</span>
+        <span style="font-weight:bold; color:#ff3535;">${foundScore}</span>
+        <span style="color:#666;">Rank:</span>
+        <span style="font-weight:bold;">#${foundIndex+1}</span>`;
+      resultDiv.style.display = "flex";
+      let leaderboardList = document.getElementById('leaderboard-list');
+      let lis = leaderboardList.querySelectorAll('li');
+      let li = lis[foundIndex];
+      if (li) {
+        li.style.background = "#ffe7e7";
+        li.scrollIntoView({behavior:"smooth", block:"center"});
+        setTimeout(() => { li.style.background = ""; }, 1500);
+      }
+    }
+
+    // Kullanıcı adı yazınca profil ve skor kutusu güncelle
+    document.getElementById("username").addEventListener("input", function(e) {
+      const username = e.target.value.trim();
+      showProfileInfo(username);
+      updateUserScoreBox(username);
+    });
+
+    // Sıralama kutusu
+    async function updateUserScoreBox(username) {
+      const box = document.getElementById('user-score-box');
+      const scoreElem = document.getElementById('user-highscore');
+      const rankRow = document.getElementById('user-rank-row');
+      const rankIcon = document.getElementById('user-rank-icon');
+      const rankLabel = document.getElementById('user-rank-label');
+      if (!username) {
+        box.style.display = "none";
+        return;
+      }
+      const ref = window.db ? window.db.ref('scores') : firebase.database().ref('scores');
+      box.style.display = "block";
+      scoreElem.textContent = "-";
+      rankRow.style.display = "none";
+      rankIcon.textContent = "";
+      rankLabel.textContent = "";
+
+      let localHigh = Number(localStorage.getItem("highscore_" + username)) || 0;
+      scoreElem.textContent = localHigh;
+
+      ref.orderByChild('score').once('value', function(snapshot) {
+        const items = [];
+        snapshot.forEach(function(child) {
+          items.push(child.val());
+        });
+        items.sort((a, b) => b.score - a.score);
+        let userIndex = items.findIndex(i => (i.username||"").toLowerCase() === username.toLowerCase());
+        let userScore = (userIndex !== -1) ? items[userIndex].score : localHigh;
+        scoreElem.textContent = userScore;
+        if (userIndex !== -1) {
+          rankRow.style.display = "flex";
+          let rank = userIndex + 1;
+          let icon = "", label = "";
+          if (rank === 1) {
+            icon = "🥇";
+            label = "You are #1 (Gold)";
+            rankIcon.className = "user-rank-icon user-rank-gold";
+          } else if (rank === 2) {
+            icon = "🥈";
+            label = "You are #2 (Silver)";
+            rankIcon.className = "user-rank-icon user-rank-silver";
+          } else if (rank === 3) {
+            icon = "🥉";
+            label = "You are #3 (Bronze)";
+            rankIcon.className = "user-rank-icon user-rank-bronze";
+          } else {
+            icon = "🏅";
+            label = `Your Rank: #${rank}`;
+            rankIcon.className = "user-rank-icon user-rank-regular";
+          }
+          rankIcon.textContent = icon;
+          rankLabel.textContent = label;
+        } else {
+          rankRow.style.display = "flex";
+          rankIcon.className = "user-rank-icon";
+          rankIcon.textContent = "🎮";
+          rankLabel.textContent = "Play to enter the leaderboard!";
+        }
+      });
+    }
+
+    // Leaderboard ve arama fonk
     document.addEventListener("DOMContentLoaded", function() {
-      const audioFab = document.getElementById("audio-controls-fab");
-      const startScreen = document.getElementById("start-screen");
-      const startBtn = document.getElementById("start-button");
-      const gameOverScreen = document.getElementById("game-over-screen");
-      const restartBtn = document.getElementById("restartButton");
-
-      function showAudioFab() {
-        audioFab.style.display = "flex";
-      }
-      function hideAudioFab() {
-        audioFab.style.display = "none";
-      }
-
-      // Sayfa yüklendiğinde başlat
-      if (startScreen && startScreen.style.display !== "none") {
-        showAudioFab();
-      }
-
-      // Oyun başlayınca gizle
-      if (startBtn) {
-        startBtn.addEventListener("click", function() {
-          hideAudioFab();
-        });
-      }
-
-      // Oyun bitti, ana ekrana dönünce tekrar göster
-      // game-over-screen tekrar başlatınca ana ekrana dönüyorsa:
-      if (restartBtn) {
-        restartBtn.addEventListener("click", function() {
-          // restart işlemi bitince ana ekran açılıyorsa:
-          setTimeout(() => {
-            if (startScreen && startScreen.style.display !== "none") {
-              showAudioFab();
-            }
-          }, 500); // animasyon/işlem için ufak gecikme
-        });
-      }
-      // Eğer başka bir şekilde ana ekrana dönülüyorsa, oralarda da showAudioFab() çağır.
+      showSideLeaderboard();
+      document.getElementById("leaderboard-search-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        searchLeaderboard(document.getElementById("leaderboard-search-input").value);
+      });
+      document.getElementById("leaderboard-search-input").addEventListener("input", function(e) {
+        if (!e.target.value.trim()) {
+          document.getElementById("leaderboard-search-result").style.display = "none";
+        }
+      });
     });
   </script>
 </body>
